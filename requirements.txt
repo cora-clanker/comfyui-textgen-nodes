@@ -1,0 +1,3 @@
+# Runtime dependency. ComfyUI already bundles requests; pinned loosely here for
+# standalone / test use and for installs that don't.
+requests>=2.28

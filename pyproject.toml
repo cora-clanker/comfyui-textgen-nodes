@@ -1,0 +1,29 @@
+[project]
+name = "comfyui-textgen-nodes"
+version = "0.1.0"
+description = "ComfyUI node that sends text + a system prompt to an OpenAI-compatible endpoint and returns the reply with <think> blocks stripped."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.28",
+]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+
+[project.urls]
+Repository = "https://github.com/CHANGEME/comfyui-textgen-nodes"
+
+[tool.comfy]
+# TODO: set PublisherId to your ComfyUI Registry publisher id before publishing.
+PublisherId = "CHANGEME"
+DisplayName = "Text Gen Nodes"
+
+[tool.pytest.ini_options]
+# The repo-root __init__.py (required by ComfyUI) would otherwise collide with
+# pytest's rootdir package detection; importlib mode + explicit pythonpath
+# avoids importing it during collection.
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+pythonpath = ["."]

@@ -1,0 +1,106 @@
+import pytest
+
+from src import config
+from src.config import resolve_config
+
+_ENV_VARS = [
+    "TEXTGEN_API_BASE",
+    "TEXTGEN_API_KEY",
+    "TEXTGEN_MODEL",
+    "TEXTGEN_SYSTEM_PROMPT",
+    "TEXTGEN_TEMPERATURE",
+    "TEXTGEN_TIMEOUT",
+]
+
+
+@pytest.fixture(autouse=True)
+def clean_env(monkeypatch):
+    """Isolate each test: no env vars and an empty settings file by default."""
+    for var in _ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(config, "_load_settings", lambda: {})
+
+
+def set_settings(monkeypatch, data):
+    monkeypatch.setattr(config, "_load_settings", lambda: data)
+
+
+def test_missing_api_key_raises(monkeypatch):
+    with pytest.raises(ValueError, match="No API key"):
+        resolve_config()
+
+
+def test_defaults_with_key_from_env(monkeypatch):
+    monkeypatch.setenv("TEXTGEN_API_KEY", "k")
+    cfg = resolve_config()
+    assert cfg.api_base == "https://api.openai.com/v1"
+    assert cfg.model == "gpt-4o-mini"
+    assert cfg.system_prompt == "You are a helpful assistant."
+    assert cfg.temperature == 0.7
+    assert cfg.timeout == 60.0
+
+
+def test_settings_override_env(monkeypatch):
+    monkeypatch.setenv("TEXTGEN_API_KEY", "env-key")
+    monkeypatch.setenv("TEXTGEN_MODEL", "env-model")
+    set_settings(
+        monkeypatch,
+        {"textgen.apiKey": "settings-key", "textgen.model": "settings-model"},
+    )
+    cfg = resolve_config()
+    assert cfg.api_key == "settings-key"
+    assert cfg.model == "settings-model"
+
+
+def test_node_override_beats_settings(monkeypatch):
+    set_settings(
+        monkeypatch,
+        {
+            "textgen.apiKey": "k",
+            "textgen.model": "settings-model",
+            "textgen.systemPrompt": "settings prompt",
+        },
+    )
+    cfg = resolve_config(system_prompt_override="node prompt", model_override="node-model")
+    assert cfg.model == "node-model"
+    assert cfg.system_prompt == "node prompt"
+
+
+def test_blank_override_falls_back(monkeypatch):
+    set_settings(monkeypatch, {"textgen.apiKey": "k", "textgen.model": "settings-model"})
+    cfg = resolve_config(model_override="   ")
+    assert cfg.model == "settings-model"
+
+
+def test_api_base_trailing_slash_stripped(monkeypatch):
+    set_settings(
+        monkeypatch,
+        {"textgen.apiKey": "k", "textgen.apiBase": "https://host/v1/"},
+    )
+    assert resolve_config().api_base == "https://host/v1"
+
+
+def test_numeric_from_settings_and_env(monkeypatch):
+    set_settings(
+        monkeypatch,
+        {"textgen.apiKey": "k", "textgen.temperature": 0.2, "textgen.timeout": 15},
+    )
+    cfg = resolve_config()
+    assert cfg.temperature == 0.2
+    assert cfg.timeout == 15.0
+
+    monkeypatch.setenv("TEXTGEN_API_KEY", "k")
+    set_settings(monkeypatch, {})
+    monkeypatch.setenv("TEXTGEN_TEMPERATURE", "1.5")
+    assert resolve_config().temperature == 1.5
+
+
+def test_bad_numeric_falls_back_to_default(monkeypatch):
+    set_settings(monkeypatch, {"textgen.apiKey": "k", "textgen.temperature": "hot"})
+    assert resolve_config().temperature == 0.7
+
+
+def test_empty_string_setting_falls_back(monkeypatch):
+    monkeypatch.setenv("TEXTGEN_API_KEY", "k")
+    set_settings(monkeypatch, {"textgen.model": "  "})
+    assert resolve_config().model == "gpt-4o-mini"
