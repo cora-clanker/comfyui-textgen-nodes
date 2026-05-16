@@ -21,8 +21,13 @@ if _HAS_V3:
     except ImportError:  # imported outside the ComfyUI package (e.g. tests)
         from src.nodes_v3 import comfy_entrypoint  # noqa: F401
 
-    NODE_CLASS_MAPPINGS = {}
-    NODE_DISPLAY_NAME_MAPPINGS = {}
+    # Must be None, not {}. ComfyUI's loader gate is
+    # `hasattr(...) and getattr(...) is not None` and it `return`s on the
+    # V1 branch BEFORE reaching the comfy_entrypoint (V3) branch. An empty
+    # dict is "not None", so {} traps the loader in the V1 path, registers
+    # zero nodes, and never calls comfy_entrypoint. None skips it correctly.
+    NODE_CLASS_MAPPINGS = None
+    NODE_DISPLAY_NAME_MAPPINGS = None
 else:
     try:
         from .src.nodes_legacy import (  # noqa: F401
