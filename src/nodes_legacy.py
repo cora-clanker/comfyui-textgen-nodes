@@ -9,7 +9,7 @@ from .config import resolve_config
 from .think import strip_think
 
 
-class TextGenNodeLegacy:
+class TextGenAdvancedNodeLegacy:
     CATEGORY = "text/llm"
     FUNCTION = "run"
     RETURN_TYPES = ("STRING",)
@@ -37,5 +37,5 @@ class TextGenNodeLegacy:
         return (strip_think(raw),)
 
 
-NODE_CLASS_MAPPINGS = {"TextGenOpenAI": TextGenNodeLegacy}
-NODE_DISPLAY_NAME_MAPPINGS = {"TextGenOpenAI": "Text Gen (OpenAI-compatible)"}
+NODE_CLASS_MAPPINGS = {"TextGenOpenAI": TextGenAdvancedNodeLegacy}
+NODE_DISPLAY_NAME_MAPPINGS = {"TextGenOpenAI": "Text Gen Advanced"}

@@ -19,13 +19,20 @@ _DESCRIPTION = (
     "model and system prompt can be overridden per-node."
 )
 
+_PROMPT_ENHANCER_DESCRIPTION = (
+    "Run a prompt through the configured chat endpoint and return the reply "
+    "with <think> reasoning blocks removed. The model dropdown is populated "
+    "from <api_base>/models; use the refresh button to re-fetch. System "
+    "prompt, endpoint and API key come from Settings -> TextGen."
+)
 
-class TextGenNode(io.ComfyNode):
+
+class TextGenAdvancedNode(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="TextGenOpenAI",
-            display_name="Text Gen (OpenAI-compatible)",
+            display_name="Text Gen Advanced",
             category="text/llm",
             description=_DESCRIPTION,
             inputs=[
@@ -59,9 +66,44 @@ class TextGenNode(io.ComfyNode):
         return io.NodeOutput(strip_think(raw))
 
 
+class PromptEnhancerNode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="TextGenPromptEnhancer",
+            display_name="Prompt Enhancer",
+            category="text/llm",
+            description=_PROMPT_ENHANCER_DESCRIPTION,
+            inputs=[
+                io.String.Input(
+                    "text",
+                    multiline=True,
+                    default="",
+                    tooltip="User message sent to the model.",
+                ),
+                io.Combo.Input(
+                    "model",
+                    options=[],
+                    remote=io.RemoteOptions(
+                        route="/textgen/models",
+                        refresh_button=True,
+                    ),
+                    tooltip="Models advertised by the configured endpoint.",
+                ),
+            ],
+            outputs=[io.String.Output(display_name="text")],
+        )
+
+    @classmethod
+    async def execute(cls, text, model) -> io.NodeOutput:
+        cfg = resolve_config(model_override=model)
+        raw = await asyncio.to_thread(chat_completion, cfg, text)
+        return io.NodeOutput(strip_think(raw))
+
+
 class TextGenExtension(ComfyExtension):
     async def get_node_list(self):
-        return [TextGenNode]
+        return [TextGenAdvancedNode, PromptEnhancerNode]
 
 
 async def comfy_entrypoint() -> ComfyExtension:

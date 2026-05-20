@@ -21,6 +21,18 @@ if _HAS_V3:
     except ImportError:  # imported outside the ComfyUI package (e.g. tests)
         from src.nodes_v3 import comfy_entrypoint  # noqa: F401
 
+    # Side-effect import: registers /textgen/models on PromptServer. Best
+    # effort -- if ``server`` isn't on sys.path (e.g. tooling that probes the
+    # entrypoint outside ComfyUI), skip silently; the dropdown just won't work
+    # in that environment.
+    try:
+        from .src import routes  # noqa: F401
+    except ImportError:
+        try:
+            from src import routes  # noqa: F401
+        except ImportError:
+            pass
+
     # Must be None, not {}. ComfyUI's loader gate is
     # `hasattr(...) and getattr(...) is not None` and it `return`s on the
     # V1 branch BEFORE reaching the comfy_entrypoint (V3) branch. An empty
