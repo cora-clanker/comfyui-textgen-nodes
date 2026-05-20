@@ -1,9 +1,10 @@
 # comfyui-coras-textgen-nodes
 
-**Cora's Textgen** — a ComfyUI custom-node pack with two nodes,
-**Cora's Prompt Enhancer** and **Cora's Textgen Advanced**, that send your text
-plus a system prompt to an OpenAI-compatible `/chat/completions` endpoint and
-output the reply with `<think>` reasoning blocks stripped.
+**Cora's Textgen** — a ComfyUI custom-node pack with three nodes,
+**Prompt Enhancer**, **Textgen Advanced**, and **Recaption**, that send your
+text (or an image) plus a system prompt to an OpenAI-compatible
+`/chat/completions` endpoint and output the reply with `<think>` reasoning
+blocks stripped.
 
 - Targets the **Nodes 2.0 (V3)** API, with an automatic **legacy fallback** for
   older ComfyUI builds that don't ship `comfy_api`.
@@ -36,6 +37,7 @@ Open **Settings → Cora's Textgen** and set:
 | System Prompt | `You are a helpful assistant.` | Overridable per-node (single-line in Settings). |
 | Temperature | `0.7` | |
 | Request Timeout (s) | `60` | |
+| Filter Vision-Capable Models (Recaption) | `true` | Substring heuristic on `/models` for the Recaption dropdown. Disable to see every model. |
 
 > **The API key has no default.** A ComfyUI setting is only written to disk
 > after you change it once, so you must enter the key in Settings (or provide
@@ -46,7 +48,7 @@ Open **Settings → Cora's Textgen** and set:
 Each setting has an env fallback, used when the setting is unset:
 `CORAS_TEXTGEN_API_BASE`, `CORAS_TEXTGEN_API_KEY`, `CORAS_TEXTGEN_MODEL`,
 `CORAS_TEXTGEN_SYSTEM_PROMPT`, `CORAS_TEXTGEN_TEMPERATURE`,
-`CORAS_TEXTGEN_TIMEOUT`.
+`CORAS_TEXTGEN_TIMEOUT`, `CORAS_TEXTGEN_RECAPTION_FILTER_VISION`.
 
 **Precedence (highest first):** per-node input override (model / system prompt
 only) → `comfy.settings.json` → environment variable → built-in default.
@@ -73,6 +75,32 @@ same config-resolution chain.
 The dropdown is empty if the endpoint is unreachable, returns no
 `/models` route, or no API key is configured — in any of those cases
 **Cora's Textgen Advanced** remains usable because its `model` is free-text.
+
+### Recaption (V3 only)
+
+**Inputs**
+
+- `image` (required) — only the first frame of a batched image is captioned.
+- `style` (dropdown) — populated from YAML files in
+  `<user>/default/coras_textgen/prompts/recaption/`. Each file has `name`
+  (the display label) and `system_prompt` (sent to the model). On first
+  launch the extension seeds `stable_diffusion.yml` and `flux.yml` with
+  tag-style and natural-language captioners respectively; existing files
+  are never clobbered, so edits and additions survive restarts.
+- `model` (dropdown) — populated from `<api_base>/models`, then filtered
+  by a name heuristic (`vision`, `vl`, `llava`, `gpt-4o`, `gemma-3`,
+  `qwen-vl`, `internvl`, `minicpm-v`, `pixtral`, `molmo`, `claude`,
+  `kimi-vl`). Toggle **Filter Vision-Capable Models** off in Settings to
+  show every model the endpoint advertises.
+
+**Output**
+
+- `text` — the assistant reply with reasoning removed.
+
+The image is encoded as a base64 PNG and sent as an OpenAI-compatible
+vision message (`image_url` content part). Works against any endpoint that
+implements the vision content array — OpenAI, LM Studio (with a VL model),
+LocalAI, vLLM, etc.
 
 ### Cora's Textgen Advanced
 

@@ -1,7 +1,7 @@
 import pytest
 
 from src import config
-from src.config import resolve_config
+from src.config import resolve_config, resolve_recaption_filter
 
 _ENV_VARS = [
     "CORAS_TEXTGEN_API_BASE",
@@ -10,6 +10,7 @@ _ENV_VARS = [
     "CORAS_TEXTGEN_SYSTEM_PROMPT",
     "CORAS_TEXTGEN_TEMPERATURE",
     "CORAS_TEXTGEN_TIMEOUT",
+    "CORAS_TEXTGEN_RECAPTION_FILTER_VISION",
 ]
 
 
@@ -117,3 +118,32 @@ def test_empty_string_setting_falls_back(monkeypatch):
     monkeypatch.setenv("CORAS_TEXTGEN_API_KEY", "k")
     set_settings(monkeypatch, {"coras_textgen.model": "  "})
     assert resolve_config().model == "gpt-4o-mini"
+
+
+def test_recaption_filter_default_true(monkeypatch):
+    assert resolve_recaption_filter() is True
+
+
+def test_recaption_filter_env_disables(monkeypatch):
+    monkeypatch.setenv("CORAS_TEXTGEN_RECAPTION_FILTER_VISION", "false")
+    assert resolve_recaption_filter() is False
+    monkeypatch.setenv("CORAS_TEXTGEN_RECAPTION_FILTER_VISION", "0")
+    assert resolve_recaption_filter() is False
+    monkeypatch.setenv("CORAS_TEXTGEN_RECAPTION_FILTER_VISION", "No")
+    assert resolve_recaption_filter() is False
+
+
+def test_recaption_filter_settings_override_env(monkeypatch):
+    monkeypatch.setenv("CORAS_TEXTGEN_RECAPTION_FILTER_VISION", "false")
+    set_settings(monkeypatch, {"coras_textgen.recaptionFilterVision": True})
+    assert resolve_recaption_filter() is True
+
+
+def test_recaption_filter_settings_string_true(monkeypatch):
+    set_settings(monkeypatch, {"coras_textgen.recaptionFilterVision": "yes"})
+    assert resolve_recaption_filter() is True
+
+
+def test_recaption_filter_garbage_falls_back(monkeypatch):
+    monkeypatch.setenv("CORAS_TEXTGEN_RECAPTION_FILTER_VISION", "maybe")
+    assert resolve_recaption_filter() is True

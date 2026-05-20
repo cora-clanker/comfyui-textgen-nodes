@@ -8,7 +8,12 @@ import asyncio
 
 from comfy_api.latest import ComfyExtension, io
 
-from .client import chat_completion
+from . import prompts
+from .client import (
+    chat_completion,
+    chat_completion_with_image,
+    tensor_to_png_b64,
+)
 from .config import resolve_config
 from .think import strip_think
 
@@ -24,6 +29,14 @@ _PROMPT_ENHANCER_DESCRIPTION = (
     "with <think> reasoning blocks removed. The model dropdown is populated "
     "from <api_base>/models; use the refresh button to re-fetch. System "
     "prompt, endpoint and API key come from Settings -> Cora's Textgen."
+)
+
+_RECAPTION_DESCRIPTION = (
+    "Caption an image by sending it to an OpenAI-compatible vision chat "
+    "endpoint. The system prompt is selected from YAML files in "
+    "<user>/default/coras_textgen/prompts/recaption/. The model dropdown is "
+    "filtered to vision-capable ids by a name heuristic; disable the filter "
+    "in Settings -> Cora's Textgen -> Recaption to show every model."
 )
 
 
@@ -110,9 +123,66 @@ class CorasPromptEnhancerNode(io.ComfyNode):
         return io.NodeOutput(strip_think(raw))
 
 
+class CorasRecaptionNode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="CorasRecaption",
+            display_name="Recaption",
+            category="textgen",
+            description=_RECAPTION_DESCRIPTION,
+            inputs=[
+                io.Image.Input("image"),
+                io.Combo.Input(
+                    "style",
+                    options=[],
+                    remote=io.RemoteOptions(
+                        route="/coras_textgen/prompt_styles/recaption",
+                        refresh_button=False,
+                    ),
+                    tooltip=(
+                        "Prompt style. Edit or add YAML files under "
+                        "<user>/default/coras_textgen/prompts/recaption/."
+                    ),
+                ),
+                io.Combo.Input(
+                    "model",
+                    options=[],
+                    remote=io.RemoteOptions(
+                        route="/coras_textgen/models/vision",
+                        refresh_button=False,
+                    ),
+                    tooltip="Vision-capable models advertised by the configured endpoint.",
+                ),
+            ],
+            outputs=[io.String.Output(display_name="text")],
+        )
+
+    @classmethod
+    def validate_inputs(cls, **kwargs):
+        # Both `style` and `model` are remote-populated Combos with empty
+        # static options. Same trick as CorasPromptEnhancerNode: declaring
+        # validate_inputs with **kwargs tells the executor to skip its
+        # per-input static checks and defer to us; we accept anything.
+        return True
+
+    @classmethod
+    async def execute(cls, image, style, model) -> io.NodeOutput:
+        system_prompt = prompts.get_system_prompt(style)
+        if system_prompt is None:
+            raise RuntimeError(f"Recaption: prompt style {style!r} not found")
+        cfg = resolve_config(system_prompt_override=system_prompt, model_override=model)
+        image_b64 = await asyncio.to_thread(tensor_to_png_b64, image)
+        raw = await asyncio.to_thread(chat_completion_with_image, cfg, "", image_b64)
+        return io.NodeOutput(strip_think(raw))
+
+
 class CorasTextGenExtension(ComfyExtension):
+    async def on_load(self):
+        prompts.seed_defaults()
+
     async def get_node_list(self):
-        return [CorasTextGenAdvancedNode, CorasPromptEnhancerNode]
+        return [CorasTextGenAdvancedNode, CorasPromptEnhancerNode, CorasRecaptionNode]
 
 
 async def comfy_entrypoint() -> ComfyExtension:

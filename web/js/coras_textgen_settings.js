@@ -67,5 +67,14 @@ app.registerExtension({
       attrs: { min: 1, step: 1 },
       tooltip: "HTTP request timeout in seconds.",
     },
+    {
+      id: "coras_textgen.recaptionFilterVision",
+      name: "Filter Vision-Capable Models (Recaption)",
+      category: ["Cora's Textgen", "Recaption", "Filter Vision-Capable Models"],
+      type: "boolean",
+      defaultValue: true,
+      tooltip:
+        "Heuristic substring filter on /models for the Recaption node's model dropdown. Disable to see every model the endpoint advertises.",
+    },
   ],
 });

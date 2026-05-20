@@ -27,6 +27,7 @@ _SETTING_MODEL = "coras_textgen.model"
 _SETTING_SYSTEM_PROMPT = "coras_textgen.systemPrompt"
 _SETTING_TEMPERATURE = "coras_textgen.temperature"
 _SETTING_TIMEOUT = "coras_textgen.timeout"
+_SETTING_RECAPTION_FILTER_VISION = "coras_textgen.recaptionFilterVision"
 
 _DEFAULT_API_BASE = "https://api.openai.com/v1"
 _DEFAULT_MODEL = "gpt-4o-mini"
@@ -100,6 +101,31 @@ def _pick_float(*candidates, default):
     return default
 
 
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+_FALSE_VALUES = {"0", "false", "no", "off"}
+
+
+def _pick_bool(*candidates, default):
+    """Pick the first non-empty candidate that parses as a boolean.
+
+    Accepts native ``bool`` plus the string forms 1/0, true/false, yes/no,
+    on/off (case-insensitive). Anything else is treated as "not specified"
+    and the next candidate is tried; defaults to ``default``.
+    """
+    for candidate in candidates:
+        if isinstance(candidate, bool):
+            return candidate
+        cleaned = _clean(candidate)
+        if cleaned is None:
+            continue
+        lower = cleaned.lower()
+        if lower in _TRUE_VALUES:
+            return True
+        if lower in _FALSE_VALUES:
+            return False
+    return default
+
+
 def resolve_config(system_prompt_override: str = "", model_override: str = "") -> TextGenConfig:
     """Build a :class:`TextGenConfig` from overrides, settings, env, defaults.
 
@@ -160,4 +186,19 @@ def resolve_config(system_prompt_override: str = "", model_override: str = "") -
         system_prompt=system_prompt,
         temperature=temperature,
         timeout=timeout,
+    )
+
+
+def resolve_recaption_filter() -> bool:
+    """Read the Recaption vision-filter toggle (settings -> env -> default).
+
+    Kept separate from :func:`resolve_config` because the flag belongs to the
+    /models route, not to a chat completion. Default ``True``.
+    """
+    s = _load_settings()
+    env = os.environ
+    return _pick_bool(
+        s.get(_SETTING_RECAPTION_FILTER_VISION),
+        env.get("CORAS_TEXTGEN_RECAPTION_FILTER_VISION"),
+        default=True,
     )
