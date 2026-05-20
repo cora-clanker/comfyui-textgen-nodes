@@ -1,9 +1,9 @@
 # comfyui-textgen-nodes
 
-A ComfyUI custom-node pack with a single node, **Text Gen (OpenAI-compatible)**,
-that sends your text plus a system prompt to an OpenAI-compatible
-`/chat/completions` endpoint and outputs the reply with `<think>` reasoning
-blocks stripped.
+A ComfyUI custom-node pack with two nodes — **Prompt Enhancer** and
+**Text Gen Advanced** — that send your text plus a system prompt to an
+OpenAI-compatible `/chat/completions` endpoint and output the reply with
+`<think>` reasoning blocks stripped.
 
 - Targets the **Nodes 2.0 (V3)** API, with an automatic **legacy fallback** for
   older ComfyUI builds that don't ship `comfy_api`.
@@ -50,7 +50,30 @@ Each setting has an env fallback, used when the setting is unset:
 **Precedence (highest first):** per-node input override (model / system prompt
 only) → `comfy.settings.json` → environment variable → built-in default.
 
-## The node
+The Prompt Enhancer dropdown talks to `/textgen/models` (frontend path
+`/api/textgen/models`), which proxies `<api_base>/models` and uses the
+same config-resolution chain.
+
+## The nodes
+
+### Prompt Enhancer (V3 only)
+
+**Inputs**
+
+- `text` (required, multiline) — the user message.
+- `model` (dropdown) — populated by calling `<api_base>/models` on the
+  configured endpoint, with a refresh button to re-fetch. System prompt
+  comes from Settings.
+
+**Output**
+
+- `text` — the assistant reply with reasoning removed.
+
+The dropdown is empty if the endpoint is unreachable, returns no
+`/models` route, or no API key is configured — in any of those cases
+**Text Gen Advanced** remains usable because its `model` is free-text.
+
+### Text Gen Advanced
 
 **Inputs**
 
@@ -61,6 +84,8 @@ only) → `comfy.settings.json` → environment variable → built-in default.
 **Output**
 
 - `text` — the assistant reply with reasoning removed.
+
+Available on both V3 ComfyUI and the legacy fallback build.
 
 ### `<think>` stripping
 
