@@ -1,5 +1,5 @@
 [project]
-name = "comfyui-textgen-nodes"
+name = "comfyui-coras-textgen-nodes"
 version = "0.1.0"
 description = "ComfyUI node that sends text + a system prompt to an OpenAI-compatible endpoint and returns the reply with <think> blocks stripped."
 readme = "README.md"
@@ -13,12 +13,12 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/CHANGEME/comfyui-textgen-nodes"
+Repository = "https://github.com/CHANGEME/comfyui-coras-textgen-nodes"
 
 [tool.comfy]
 # TODO: set PublisherId to your ComfyUI Registry publisher id before publishing.
 PublisherId = "CHANGEME"
-DisplayName = "Text Gen Nodes"
+DisplayName = "Cora's Textgen"
 
 [tool.pytest.ini_options]
 # The repo-root __init__.py (required by ComfyUI) would otherwise collide with

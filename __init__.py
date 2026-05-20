@@ -1,4 +1,4 @@
-"""comfyui-textgen-nodes package entrypoint.
+"""comfyui-coras-textgen-nodes package entrypoint.
 
 ComfyUI discovers a node pack by either a ``comfy_entrypoint`` (V3) or
 ``NODE_CLASS_MAPPINGS`` (legacy). We expose exactly one of them depending on
@@ -21,7 +21,7 @@ if _HAS_V3:
     except ImportError:  # imported outside the ComfyUI package (e.g. tests)
         from src.nodes_v3 import comfy_entrypoint  # noqa: F401
 
-    # Side-effect import: registers /textgen/models on PromptServer. Best
+    # Side-effect import: registers /coras_textgen/models on PromptServer. Best
     # effort -- if ``server`` isn't on sys.path (e.g. tooling that probes the
     # entrypoint outside ComfyUI), skip silently; the dropdown just won't work
     # in that environment.

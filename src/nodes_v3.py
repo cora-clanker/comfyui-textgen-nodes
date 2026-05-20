@@ -15,25 +15,25 @@ from .think import strip_think
 _DESCRIPTION = (
     "Send text and a system prompt to an OpenAI-compatible chat endpoint and "
     "return the reply with <think> reasoning blocks removed. Endpoint, API key, "
-    "model and default system prompt are configured in Settings -> TextGen; the "
-    "model and system prompt can be overridden per-node."
+    "model and default system prompt are configured in Settings -> Cora's "
+    "Textgen; the model and system prompt can be overridden per-node."
 )
 
 _PROMPT_ENHANCER_DESCRIPTION = (
     "Run a prompt through the configured chat endpoint and return the reply "
     "with <think> reasoning blocks removed. The model dropdown is populated "
     "from <api_base>/models; use the refresh button to re-fetch. System "
-    "prompt, endpoint and API key come from Settings -> TextGen."
+    "prompt, endpoint and API key come from Settings -> Cora's Textgen."
 )
 
 
-class TextGenAdvancedNode(io.ComfyNode):
+class CorasTextGenAdvancedNode(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="TextGenOpenAI",
-            display_name="Text Gen Advanced",
-            category="text/llm",
+            node_id="CorasTextGenAdvanced",
+            display_name="Textgen Advanced",
+            category="textgen",
             description=_DESCRIPTION,
             inputs=[
                 io.String.Input(
@@ -66,13 +66,13 @@ class TextGenAdvancedNode(io.ComfyNode):
         return io.NodeOutput(strip_think(raw))
 
 
-class PromptEnhancerNode(io.ComfyNode):
+class CorasPromptEnhancerNode(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="TextGenPromptEnhancer",
+            node_id="CorasPromptEnhancer",
             display_name="Prompt Enhancer",
-            category="text/llm",
+            category="textgen",
             description=_PROMPT_ENHANCER_DESCRIPTION,
             inputs=[
                 io.String.Input(
@@ -85,8 +85,8 @@ class PromptEnhancerNode(io.ComfyNode):
                     "model",
                     options=[],
                     remote=io.RemoteOptions(
-                        route="/textgen/models",
-                        refresh_button=True,
+                        route="/coras_textgen/models",
+                        refresh_button=False,
                     ),
                     tooltip="Models advertised by the configured endpoint.",
                 ),
@@ -95,16 +95,25 @@ class PromptEnhancerNode(io.ComfyNode):
         )
 
     @classmethod
+    def validate_inputs(cls, **kwargs):
+        # The model Combo is remote-populated (options=[] in the schema), so
+        # ComfyUI's built-in "value in list" check would reject any value at
+        # submit time. Defining this method with **kwargs tells the executor
+        # to skip its static per-input checks and defer to us; any non-empty
+        # model name is accepted and resolved by the endpoint at run time.
+        return True
+
+    @classmethod
     async def execute(cls, text, model) -> io.NodeOutput:
         cfg = resolve_config(model_override=model)
         raw = await asyncio.to_thread(chat_completion, cfg, text)
         return io.NodeOutput(strip_think(raw))
 
 
-class TextGenExtension(ComfyExtension):
+class CorasTextGenExtension(ComfyExtension):
     async def get_node_list(self):
-        return [TextGenAdvancedNode, PromptEnhancerNode]
+        return [CorasTextGenAdvancedNode, CorasPromptEnhancerNode]
 
 
 async def comfy_entrypoint() -> ComfyExtension:
-    return TextGenExtension()
+    return CorasTextGenExtension()

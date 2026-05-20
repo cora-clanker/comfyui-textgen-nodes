@@ -1,14 +1,14 @@
-# comfyui-textgen-nodes
+# comfyui-coras-textgen-nodes
 
-A ComfyUI custom-node pack with two nodes — **Prompt Enhancer** and
-**Text Gen Advanced** — that send your text plus a system prompt to an
-OpenAI-compatible `/chat/completions` endpoint and output the reply with
-`<think>` reasoning blocks stripped.
+**Cora's Textgen** — a ComfyUI custom-node pack with two nodes,
+**Cora's Prompt Enhancer** and **Cora's Textgen Advanced**, that send your text
+plus a system prompt to an OpenAI-compatible `/chat/completions` endpoint and
+output the reply with `<think>` reasoning blocks stripped.
 
 - Targets the **Nodes 2.0 (V3)** API, with an automatic **legacy fallback** for
   older ComfyUI builds that don't ship `comfy_api`.
 - Endpoint, API key, model, and default system prompt are set in the ComfyUI
-  **Settings panel** (group: *TextGen*).
+  **Settings panel** (group: *Cora's Textgen*).
 - Works with any OpenAI-compatible server: OpenAI, Ollama, LM Studio,
   llama.cpp, vLLM, etc.
 
@@ -18,7 +18,7 @@ Clone (or copy) this folder into your ComfyUI `custom_nodes` directory and
 restart ComfyUI:
 
 ```
-ComfyUI/custom_nodes/comfyui-textgen-nodes
+ComfyUI/custom_nodes/comfyui-coras-textgen-nodes
 ```
 
 `requests` is the only runtime dependency and is already bundled with ComfyUI;
@@ -26,7 +26,7 @@ ComfyUI/custom_nodes/comfyui-textgen-nodes
 
 ## Configuration
 
-Open **Settings → TextGen** and set:
+Open **Settings → Cora's Textgen** and set:
 
 | Setting | Default | Notes |
 |---|---|---|
@@ -39,24 +39,25 @@ Open **Settings → TextGen** and set:
 
 > **The API key has no default.** A ComfyUI setting is only written to disk
 > after you change it once, so you must enter the key in Settings (or provide
-> `TEXTGEN_API_KEY`) — otherwise the node fails with a clear message.
+> `CORAS_TEXTGEN_API_KEY`) — otherwise the node fails with a clear message.
 
 ### Environment-variable alternative (headless / Docker)
 
 Each setting has an env fallback, used when the setting is unset:
-`TEXTGEN_API_BASE`, `TEXTGEN_API_KEY`, `TEXTGEN_MODEL`,
-`TEXTGEN_SYSTEM_PROMPT`, `TEXTGEN_TEMPERATURE`, `TEXTGEN_TIMEOUT`.
+`CORAS_TEXTGEN_API_BASE`, `CORAS_TEXTGEN_API_KEY`, `CORAS_TEXTGEN_MODEL`,
+`CORAS_TEXTGEN_SYSTEM_PROMPT`, `CORAS_TEXTGEN_TEMPERATURE`,
+`CORAS_TEXTGEN_TIMEOUT`.
 
 **Precedence (highest first):** per-node input override (model / system prompt
 only) → `comfy.settings.json` → environment variable → built-in default.
 
-The Prompt Enhancer dropdown talks to `/textgen/models` (frontend path
-`/api/textgen/models`), which proxies `<api_base>/models` and uses the
+The Prompt Enhancer dropdown talks to `/coras_textgen/models` (frontend path
+`/api/coras_textgen/models`), which proxies `<api_base>/models` and uses the
 same config-resolution chain.
 
 ## The nodes
 
-### Prompt Enhancer (V3 only)
+### Cora's Prompt Enhancer (V3 only)
 
 **Inputs**
 
@@ -71,9 +72,9 @@ same config-resolution chain.
 
 The dropdown is empty if the endpoint is unreachable, returns no
 `/models` route, or no API key is configured — in any of those cases
-**Text Gen Advanced** remains usable because its `model` is free-text.
+**Cora's Textgen Advanced** remains usable because its `model` is free-text.
 
-### Text Gen Advanced
+### Cora's Textgen Advanced
 
 **Inputs**
 

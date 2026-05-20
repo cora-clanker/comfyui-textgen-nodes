@@ -9,8 +9,8 @@ from .config import resolve_config
 from .think import strip_think
 
 
-class TextGenAdvancedNodeLegacy:
-    CATEGORY = "text/llm"
+class CorasTextGenAdvancedNodeLegacy:
+    CATEGORY = "textgen"
     FUNCTION = "run"
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
@@ -37,5 +37,5 @@ class TextGenAdvancedNodeLegacy:
         return (strip_think(raw),)
 
 
-NODE_CLASS_MAPPINGS = {"TextGenOpenAI": TextGenAdvancedNodeLegacy}
-NODE_DISPLAY_NAME_MAPPINGS = {"TextGenOpenAI": "Text Gen Advanced"}
+NODE_CLASS_MAPPINGS = {"CorasTextGenAdvanced": CorasTextGenAdvancedNodeLegacy}
+NODE_DISPLAY_NAME_MAPPINGS = {"CorasTextGenAdvanced": "Textgen Advanced"}

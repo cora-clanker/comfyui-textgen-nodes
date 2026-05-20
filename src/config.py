@@ -1,7 +1,7 @@
 """Resolve runtime configuration for the text-gen node.
 
 ComfyUI has no server-side settings API, so values set in the **Settings panel**
-(registered by ``web/js/textgen_settings.js``) are read back from the file
+(registered by ``web/js/coras_textgen_settings.js``) are read back from the file
 ComfyUI persists them to: ``<user_dir>/default/comfy.settings.json``, keyed by
 the exact setting id. Reading that file directly is a community pattern, so this
 module is deliberately defensive: a missing file, empty file, malformed JSON, or
@@ -20,13 +20,13 @@ import json
 import os
 from dataclasses import dataclass
 
-# Setting ids -- MUST stay in sync with web/js/textgen_settings.js.
-_SETTING_API_BASE = "textgen.apiBase"
-_SETTING_API_KEY = "textgen.apiKey"
-_SETTING_MODEL = "textgen.model"
-_SETTING_SYSTEM_PROMPT = "textgen.systemPrompt"
-_SETTING_TEMPERATURE = "textgen.temperature"
-_SETTING_TIMEOUT = "textgen.timeout"
+# Setting ids -- MUST stay in sync with web/js/coras_textgen_settings.js.
+_SETTING_API_BASE = "coras_textgen.apiBase"
+_SETTING_API_KEY = "coras_textgen.apiKey"
+_SETTING_MODEL = "coras_textgen.model"
+_SETTING_SYSTEM_PROMPT = "coras_textgen.systemPrompt"
+_SETTING_TEMPERATURE = "coras_textgen.temperature"
+_SETTING_TIMEOUT = "coras_textgen.timeout"
 
 _DEFAULT_API_BASE = "https://api.openai.com/v1"
 _DEFAULT_MODEL = "gpt-4o-mini"
@@ -111,44 +111,45 @@ def resolve_config(system_prompt_override: str = "", model_override: str = "") -
 
     api_base = _pick_str(
         s.get(_SETTING_API_BASE),
-        env.get("TEXTGEN_API_BASE"),
+        env.get("CORAS_TEXTGEN_API_BASE"),
         default=_DEFAULT_API_BASE,
     ).rstrip("/")
 
     api_key = _pick_str(
         s.get(_SETTING_API_KEY),
-        env.get("TEXTGEN_API_KEY"),
+        env.get("CORAS_TEXTGEN_API_KEY"),
         default="",
     )
     if not api_key:
         raise ValueError(
-            "No API key configured. Set it in ComfyUI Settings -> TextGen -> "
-            "API Key, or via the TEXTGEN_API_KEY environment variable."
+            "No API key configured. Set it in ComfyUI Settings -> Cora's "
+            "Textgen -> API Key, or via the CORAS_TEXTGEN_API_KEY environment "
+            "variable."
         )
 
     model = _pick_str(
         model_override,
         s.get(_SETTING_MODEL),
-        env.get("TEXTGEN_MODEL"),
+        env.get("CORAS_TEXTGEN_MODEL"),
         default=_DEFAULT_MODEL,
     )
 
     system_prompt = _pick_str(
         system_prompt_override,
         s.get(_SETTING_SYSTEM_PROMPT),
-        env.get("TEXTGEN_SYSTEM_PROMPT"),
+        env.get("CORAS_TEXTGEN_SYSTEM_PROMPT"),
         default=_DEFAULT_SYSTEM_PROMPT,
     )
 
     temperature = _pick_float(
         s.get(_SETTING_TEMPERATURE),
-        env.get("TEXTGEN_TEMPERATURE"),
+        env.get("CORAS_TEXTGEN_TEMPERATURE"),
         default=_DEFAULT_TEMPERATURE,
     )
 
     timeout = _pick_float(
         s.get(_SETTING_TIMEOUT),
-        env.get("TEXTGEN_TIMEOUT"),
+        env.get("CORAS_TEXTGEN_TIMEOUT"),
         default=_DEFAULT_TIMEOUT,
     )
 
