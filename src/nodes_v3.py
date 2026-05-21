@@ -1,8 +1,4 @@
-"""V3 (Nodes 2.0) node definition.
-
-Imported only when ``comfy_api`` is available (guarded in the package
-``__init__``), so the ``comfy_api`` import here is safe.
-"""
+"""V3 (Nodes 2.0) node definitions for Cora's Textgen."""
 
 import asyncio
 
@@ -17,21 +13,13 @@ from .client import (
 from .config import resolve_config
 from .think import strip_think
 
-_DESCRIPTION = (
-    "Send text and a system prompt to an OpenAI-compatible chat endpoint and "
-    "return the reply with <think> reasoning blocks removed. Endpoint, API key, "
-    "model and default system prompt are configured in Settings -> Cora's "
-    "Textgen; the model and system prompt can be overridden per-node."
-)
-
 _PROMPT_ENHANCER_DESCRIPTION = (
     "Rewrite a draft prompt through the configured chat endpoint and return "
-    "the reply with <think> reasoning blocks removed. The model dropdown is "
-    "populated from <api_base>/models. The system prompt comes from the "
-    "selected style (YAML files under "
-    "<user>/default/coras_textgen/prompts/prompt_enhancer/), not Settings "
-    "-> System Prompt -- that setting still drives Textgen Advanced. "
-    "Endpoint and API key come from Settings -> Cora's Textgen."
+    "the reply with <think> reasoning blocks removed. The system prompt comes "
+    "from the selected style (YAML files under "
+    "<user>/default/coras_textgen/prompts/prompt_enhancer/). The model "
+    "dropdown is populated from <api_base>/models. Endpoint and API key come "
+    "from Settings -> Cora's Textgen."
 )
 
 _RECAPTION_DESCRIPTION = (
@@ -41,45 +29,6 @@ _RECAPTION_DESCRIPTION = (
     "filtered to vision-capable ids by a name heuristic; disable the filter "
     "in Settings -> Cora's Textgen -> Recaption to show every model."
 )
-
-
-class CorasTextGenAdvancedNode(io.ComfyNode):
-    @classmethod
-    def define_schema(cls) -> io.Schema:
-        return io.Schema(
-            node_id="CorasTextGenAdvanced",
-            display_name="Textgen Advanced",
-            category="textgen",
-            description=_DESCRIPTION,
-            inputs=[
-                io.String.Input(
-                    "text",
-                    multiline=True,
-                    default="",
-                    tooltip="User message sent to the model.",
-                ),
-                io.String.Input(
-                    "system_prompt",
-                    multiline=True,
-                    default="",
-                    optional=True,
-                    tooltip="Override the system prompt. Blank = use Settings.",
-                ),
-                io.String.Input(
-                    "model",
-                    default="",
-                    optional=True,
-                    tooltip="Override the model name. Blank = use Settings.",
-                ),
-            ],
-            outputs=[io.String.Output(display_name="text")],
-        )
-
-    @classmethod
-    async def execute(cls, text, system_prompt="", model="") -> io.NodeOutput:
-        cfg = resolve_config(system_prompt_override=system_prompt, model_override=model)
-        raw = await asyncio.to_thread(chat_completion, cfg, text)
-        return io.NodeOutput(strip_think(raw))
 
 
 class CorasPromptEnhancerNode(io.ComfyNode):
@@ -139,7 +88,7 @@ class CorasPromptEnhancerNode(io.ComfyNode):
             raise RuntimeError(
                 f"Prompt Enhancer: prompt style {style!r} not found"
             )
-        cfg = resolve_config(system_prompt_override=system_prompt, model_override=model)
+        cfg = resolve_config(system_prompt=system_prompt, model=model)
         raw = await asyncio.to_thread(chat_completion, cfg, text)
         return io.NodeOutput(strip_think(raw))
 
@@ -192,7 +141,7 @@ class CorasRecaptionNode(io.ComfyNode):
         system_prompt = prompts.get_system_prompt("recaption", style)
         if system_prompt is None:
             raise RuntimeError(f"Recaption: prompt style {style!r} not found")
-        cfg = resolve_config(system_prompt_override=system_prompt, model_override=model)
+        cfg = resolve_config(system_prompt=system_prompt, model=model)
         image_b64 = await asyncio.to_thread(tensor_to_png_b64, image)
         raw = await asyncio.to_thread(chat_completion_with_image, cfg, "", image_b64)
         return io.NodeOutput(strip_think(raw))
@@ -203,7 +152,7 @@ class CorasTextGenExtension(ComfyExtension):
         prompts.seed_defaults()
 
     async def get_node_list(self):
-        return [CorasTextGenAdvancedNode, CorasPromptEnhancerNode, CorasRecaptionNode]
+        return [CorasPromptEnhancerNode, CorasRecaptionNode]
 
 
 async def comfy_entrypoint() -> ComfyExtension:

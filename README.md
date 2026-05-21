@@ -1,15 +1,15 @@
 # comfyui-coras-textgen-nodes
 
-**Cora's Textgen** — a ComfyUI custom-node pack with three nodes,
-**Prompt Enhancer**, **Textgen Advanced**, and **Recaption**, that send your
-text (or an image) plus a system prompt to an OpenAI-compatible
-`/chat/completions` endpoint and output the reply with `<think>` reasoning
-blocks stripped.
+**Cora's Textgen** — a ComfyUI custom-node pack with two nodes,
+**Prompt Enhancer** and **Recaption**, that send your text (or an image)
+plus a style-driven system prompt to an OpenAI-compatible
+`/chat/completions` endpoint and output the reply with `<think>`
+reasoning blocks stripped.
 
-- Targets the **Nodes 2.0 (V3)** API, with an automatic **legacy fallback** for
-  older ComfyUI builds that don't ship `comfy_api`.
-- Endpoint, API key, model, and default system prompt are set in the ComfyUI
-  **Settings panel** (group: *Cora's Textgen*).
+- Targets the **Nodes 2.0 (V3)** API.
+- Endpoint and API key are set in the ComfyUI **Settings panel** (group:
+  *Cora's Textgen*); system prompts come from per-node style dropdowns
+  backed by user-editable YAML files.
 - Works with any OpenAI-compatible server: OpenAI, Ollama, LM Studio,
   llama.cpp, vLLM, etc.
 
@@ -33,8 +33,6 @@ Open **Settings → Cora's Textgen** and set:
 |---|---|---|
 | API Base URL | `https://api.openai.com/v1` | The node calls `<base>/chat/completions`. |
 | API Key | *(empty)* | Required. Stored locally, never in workflow files. |
-| Model | `gpt-4o-mini` | Overridable per-node. |
-| System Prompt | `You are a helpful assistant.` | Overridable per-node (single-line in Settings). |
 | Temperature | `0.7` | |
 | Request Timeout (s) | `60` | |
 | Filter Vision-Capable Models (Recaption) | `true` | Substring heuristic on `/models` for the Recaption dropdown. Disable to see every model. |
@@ -46,20 +44,22 @@ Open **Settings → Cora's Textgen** and set:
 ### Environment-variable alternative (headless / Docker)
 
 Each setting has an env fallback, used when the setting is unset:
-`CORAS_TEXTGEN_API_BASE`, `CORAS_TEXTGEN_API_KEY`, `CORAS_TEXTGEN_MODEL`,
-`CORAS_TEXTGEN_SYSTEM_PROMPT`, `CORAS_TEXTGEN_TEMPERATURE`,
-`CORAS_TEXTGEN_TIMEOUT`, `CORAS_TEXTGEN_RECAPTION_FILTER_VISION`.
+`CORAS_TEXTGEN_API_BASE`, `CORAS_TEXTGEN_API_KEY`,
+`CORAS_TEXTGEN_TEMPERATURE`, `CORAS_TEXTGEN_TIMEOUT`,
+`CORAS_TEXTGEN_RECAPTION_FILTER_VISION`.
 
-**Precedence (highest first):** per-node input override (model / system prompt
-only) → `comfy.settings.json` → environment variable → built-in default.
+**Precedence (highest first):** `comfy.settings.json` → environment
+variable → built-in default. The `model` and `system_prompt` per chat
+call come from on-node selections (model dropdown + style YAML) and are
+not configured in Settings.
 
-The Prompt Enhancer dropdown talks to `/coras_textgen/models` (frontend path
-`/api/coras_textgen/models`), which proxies `<api_base>/models` and uses the
-same config-resolution chain.
+The model dropdowns talk to `/coras_textgen/models` (and
+`/coras_textgen/models/vision` for Recaption), which proxy
+`<api_base>/models`.
 
 ## The nodes
 
-### Prompt Enhancer (V3 only)
+### Prompt Enhancer
 
 **Inputs**
 
@@ -70,9 +70,7 @@ same config-resolution chain.
   to the model). On first launch the extension seeds
   `stable_diffusion.yml` (tag-style rewriter) and `flux.yml`
   (natural-language rewriter); existing files are never clobbered, so
-  edits and additions survive restarts. **The selected style fully
-  replaces Settings → System Prompt for this node** — that setting now
-  only affects **Textgen Advanced**.
+  edits and additions survive restarts.
 - `model` (dropdown) — populated by calling `<api_base>/models` on the
   configured endpoint.
 
@@ -80,11 +78,7 @@ same config-resolution chain.
 
 - `text` — the assistant reply with reasoning removed.
 
-The model dropdown is empty if the endpoint is unreachable, returns no
-`/models` route, or no API key is configured — in any of those cases
-**Cora's Textgen Advanced** remains usable because its `model` is free-text.
-
-### Recaption (V3 only)
+### Recaption
 
 **Inputs**
 
@@ -110,20 +104,6 @@ vision message (`image_url` content part). Works against any endpoint that
 implements the vision content array — OpenAI, LM Studio (with a VL model),
 LocalAI, vLLM, etc.
 
-### Cora's Textgen Advanced
-
-**Inputs**
-
-- `text` (required, multiline) — the user message.
-- `system_prompt` (optional, multiline) — override; blank uses the Settings value.
-- `model` (optional) — override; blank uses the Settings value.
-
-**Output**
-
-- `text` — the assistant reply with reasoning removed.
-
-Available on both V3 ComfyUI and the legacy fallback build.
-
 ### `<think>` stripping
 
 The output has reasoning content removed, handling the common variants:
@@ -143,20 +123,20 @@ Text with no think tags passes through unchanged (whitespace-trimmed).
   API. Reads are defensive (missing/empty/bad file → env → defaults).
 - Multi-user ComfyUI stores settings under `user/<name>/…`; only the `default`
   user (plus env vars) is supported initially.
-- The V3 `comfy_api` surface is still evolving; the legacy node covers older
-  builds.
+- V3 only — requires a ComfyUI build that ships `comfy_api.latest`.
 
 ## Development
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install requests pytest
+pip install requests pytest pyyaml
 pytest -q
 ```
 
-Tests cover `strip_think` (all tag variants) and `resolve_config` precedence;
-neither requires a running ComfyUI.
+Tests cover `strip_think` (all tag variants), `resolve_config` precedence,
+the vision-model name heuristic, and the YAML-backed prompt-style loader;
+none require a running ComfyUI.
 
 ## Publishing
 

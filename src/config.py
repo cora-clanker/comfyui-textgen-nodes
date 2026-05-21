@@ -1,4 +1,4 @@
-"""Resolve runtime configuration for the text-gen node.
+"""Resolve runtime configuration for Cora's Textgen.
 
 ComfyUI has no server-side settings API, so values set in the **Settings panel**
 (registered by ``web/js/coras_textgen_settings.js``) are read back from the file
@@ -8,12 +8,10 @@ module is deliberately defensive: a missing file, empty file, malformed JSON, or
 missing key all fall through to environment variables and then built-in
 defaults.
 
-Precedence per field (highest first):
-
-* node input override (``model`` / ``system_prompt`` only)
-* ``comfy.settings.json``
-* environment variable
-* built-in default
+The ``system_prompt`` and ``model`` fields of :class:`TextGenConfig` are not in
+the fallback chain -- both nodes pass them directly from their on-screen
+inputs (style YAML + model dropdown). Settings/env only cover the cross-cutting
+connection knobs (api_base, api_key, temperature, timeout).
 """
 
 import json
@@ -23,15 +21,11 @@ from dataclasses import dataclass
 # Setting ids -- MUST stay in sync with web/js/coras_textgen_settings.js.
 _SETTING_API_BASE = "coras_textgen.apiBase"
 _SETTING_API_KEY = "coras_textgen.apiKey"
-_SETTING_MODEL = "coras_textgen.model"
-_SETTING_SYSTEM_PROMPT = "coras_textgen.systemPrompt"
 _SETTING_TEMPERATURE = "coras_textgen.temperature"
 _SETTING_TIMEOUT = "coras_textgen.timeout"
 _SETTING_RECAPTION_FILTER_VISION = "coras_textgen.recaptionFilterVision"
 
 _DEFAULT_API_BASE = "https://api.openai.com/v1"
-_DEFAULT_MODEL = "gpt-4o-mini"
-_DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 _DEFAULT_TEMPERATURE = 0.7
 _DEFAULT_TIMEOUT = 60.0
 
@@ -126,8 +120,9 @@ def _pick_bool(*candidates, default):
     return default
 
 
-def resolve_config(system_prompt_override: str = "", model_override: str = "") -> TextGenConfig:
-    """Build a :class:`TextGenConfig` from overrides, settings, env, defaults.
+def resolve_config(*, system_prompt: str, model: str) -> TextGenConfig:
+    """Build a :class:`TextGenConfig` from settings/env plus the caller's
+    ``system_prompt`` and ``model``.
 
     Raises ``ValueError`` if no API key can be found, since there is no safe
     default for it.
@@ -152,20 +147,6 @@ def resolve_config(system_prompt_override: str = "", model_override: str = "") -
             "Textgen -> API Key, or via the CORAS_TEXTGEN_API_KEY environment "
             "variable."
         )
-
-    model = _pick_str(
-        model_override,
-        s.get(_SETTING_MODEL),
-        env.get("CORAS_TEXTGEN_MODEL"),
-        default=_DEFAULT_MODEL,
-    )
-
-    system_prompt = _pick_str(
-        system_prompt_override,
-        s.get(_SETTING_SYSTEM_PROMPT),
-        env.get("CORAS_TEXTGEN_SYSTEM_PROMPT"),
-        default=_DEFAULT_SYSTEM_PROMPT,
-    )
 
     temperature = _pick_float(
         s.get(_SETTING_TEMPERATURE),

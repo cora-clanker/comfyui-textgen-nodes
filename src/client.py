@@ -1,8 +1,8 @@
 """Minimal synchronous client for an OpenAI-compatible chat endpoint.
 
-Kept synchronous so the same implementation serves both the async V3 node
-(via ``asyncio.to_thread``) and the sync legacy node, with no event-loop
-reentrancy concerns.
+Kept synchronous because the V3 nodes call into it via ``asyncio.to_thread``;
+keeping ``requests`` here avoids pulling an async HTTP stack just to issue
+one POST.
 """
 
 import base64

@@ -33,23 +33,6 @@ app.registerExtension({
       attrs: { type: "password" },
     },
     {
-      id: "coras_textgen.model",
-      name: "Model",
-      category: ["Cora's Textgen", "Generation", "Model"],
-      type: "text",
-      defaultValue: "gpt-4o-mini",
-      tooltip: "Default model name. Can be overridden per-node.",
-    },
-    {
-      id: "coras_textgen.systemPrompt",
-      name: "System Prompt",
-      category: ["Cora's Textgen", "Generation", "System Prompt"],
-      type: "text",
-      defaultValue: "You are a helpful assistant.",
-      tooltip:
-        "Default system prompt. Settings input is single-line; use the node's multiline override for long prompts.",
-    },
-    {
       id: "coras_textgen.temperature",
       name: "Temperature",
       category: ["Cora's Textgen", "Generation", "Temperature"],
