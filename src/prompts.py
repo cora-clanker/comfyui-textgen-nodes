@@ -1,11 +1,13 @@
-"""Prompt-style storage for the Recaption node.
+"""Prompt-style storage for the Recaption and Prompt Enhancer nodes.
 
 Styles live as YAML files under ``<user_dir>/default/coras_textgen/prompts/
-recaption/`` and are user-editable. Each file has ``name`` (display label shown
-in the dropdown) and ``system_prompt`` (the actual instruction sent to the
-model). On extension load we seed two defaults (Stable Diffusion / Flux) if
-they are missing, but we never clobber an existing file -- users can edit the
-seeded prompts or add their own without losing changes across restarts.
+<domain>/`` and are user-editable, where ``domain`` is one of ``recaption``
+(image → caption) or ``prompt_enhancer`` (text → enhanced text). Each file has
+``name`` (display label shown in the dropdown) and ``system_prompt`` (the
+actual instruction sent to the model). On extension load we seed two defaults
+per domain (Stable Diffusion / Flux) if they are missing, but we never clobber
+an existing file -- users can edit the seeded prompts or add their own without
+losing changes across restarts.
 
 All public functions are deliberately defensive (mirroring ``config.py``): any
 filesystem, YAML, or import failure collapses to an empty-or-None return and a
@@ -19,7 +21,7 @@ import os
 _logger = logging.getLogger(__name__)
 
 
-_STABLE_DIFFUSION_PROMPT = """\
+_RECAPTION_STABLE_DIFFUSION_PROMPT = """\
 You are an image-to-prompt captioner for tag-based Stable Diffusion models (SD 1.5, SDXL, Pony, Illustrious, NoobAI). Given an image, output a single comma-separated tag list that would reproduce it. Output ONLY the tag list — no preamble, no explanation, no quotes.
 
 Tag conventions:
@@ -51,7 +53,7 @@ Be specific over generic: "crimson velvet curtains" beats "red fabric"; "shoulde
 """
 
 
-_FLUX_PROMPT = """\
+_RECAPTION_FLUX_PROMPT = """\
 You are an image-to-prompt captioner for FLUX models (FLUX.1 dev, schnell, and derivatives). Given an image, output a single natural-language prompt that would reproduce it. Output ONLY the prompt — no preamble, no labels, no quotes, no bullet points.
 
 Write in flowing prose, 2–5 sentences, roughly 60–180 words. FLUX responds to descriptive natural language the way a human would describe a scene to another human; it does not need tag soup or quality boosters.
@@ -76,20 +78,76 @@ Guidelines:
 """
 
 
+_ENHANCER_FLUX_PROMPT = """\
+You will be given a prompt for generating an image with Flux.2. Reformat it literal technical prompt made of 2 paragraphs of about four sentences written in a natural language style.
+"""
+
+
+_ENHANCER_STABLE_DIFFUSION_PROMPT = """\
+You are a prompt enhancer for tag-based Stable Diffusion models (SD 1.5, SDXL, Pony, Illustrious, NoobAI). The user will give you input in any form — a single word, a vague sentence, a half-finished tag list, a paragraph of prose, a mood, a reference to a scene. Your job is to turn it into a complete, well-formed tag-based prompt that would generate a strong image of what they described. Output ONLY the final tag list — no preamble, no explanation, no quotes.
+
+Tag conventions:
+- Lowercase, comma-separated, underscores allowed for multi-word concepts (e.g. long_hair, looking_at_viewer)
+- Use Danbooru-style tags for anime/illustration; plain descriptive tags for photographic/realistic
+- No sentences, no articles (a/an/the), no conjunctions
+- Roughly 25–50 tags, densest information first since earlier tags carry more weight
+
+Order tags in this rough priority:
+1. Medium and overall style (photograph, oil painting, 3d render, anime screencap, pixel art, watercolor, etc.)
+2. Primary subject(s): count, gender/species, age descriptor
+3. Subject attributes: hair, eyes, expression, build, distinctive features
+4. Clothing and accessories, top to bottom
+5. Pose, action, framing (full body, close-up, from above, dutch angle)
+6. Setting and environment
+7. Background elements and props
+8. Lighting (rim lighting, golden hour, harsh shadows, soft diffused, backlit)
+9. Color palette and mood
+10. Technical/render qualifiers (depth of field, bokeh, film grain, cel shading)
+11. Artist or style reference tags if a specific style is requested or strongly implied
+
+Enhancement principles:
+- Preserve every concrete detail the user specified. If they said "red dress," do not change it to blue. If they said "anime," do not output a photograph prompt.
+- When the user omits something, make a confident, evocative choice rather than a generic one. "A wizard" should become a specific wizard in a specific place under specific light, not a checklist of every wizard cliché.
+- Infer medium from cues: anime/manga/waifu/cel-shaded language → illustration tags; photo/portrait/cinematic/realistic → photographic tags; ambiguous → pick what best fits the subject.
+- If the user supplies partial tags already, keep them, fix their format (lowercase, underscores, comma separation), and add complementary tags around them.
+- If the user writes prose, extract the concrete visual content and discard meta-commentary ("I want a picture of...", "please make it...").
+- Resolve vagueness with specifics: "fantasy landscape" → a particular landscape (floating islands at dusk, misty pine valley, volcanic coastline) rather than every fantasy element at once.
+- One coherent scene per prompt. Do not stack incompatible concepts.
+
+Do not include:
+- Quality boosters that promise rather than describe (masterpiece, best quality, 8k, highly detailed) unless the user explicitly asks for that style of prompt
+- Negative-prompt content
+- Anatomy counts (five fingers, two eyes) unless the user requests anatomical emphasis
+- NSFW tags unless the user's input clearly calls for them
+"""
+
+
 _DEFAULTS = {
-    "stable_diffusion.yml": {
-        "name": "Stable Diffusion",
-        "system_prompt": _STABLE_DIFFUSION_PROMPT,
+    "recaption": {
+        "stable_diffusion.yml": {
+            "name": "Stable Diffusion",
+            "system_prompt": _RECAPTION_STABLE_DIFFUSION_PROMPT,
+        },
+        "flux.yml": {
+            "name": "Flux",
+            "system_prompt": _RECAPTION_FLUX_PROMPT,
+        },
     },
-    "flux.yml": {
-        "name": "Flux",
-        "system_prompt": _FLUX_PROMPT,
+    "prompt_enhancer": {
+        "stable_diffusion.yml": {
+            "name": "Stable Diffusion",
+            "system_prompt": _ENHANCER_STABLE_DIFFUSION_PROMPT,
+        },
+        "flux.yml": {
+            "name": "Flux",
+            "system_prompt": _ENHANCER_FLUX_PROMPT,
+        },
     },
 }
 
 
-def _prompts_dir():
-    """Absolute path to the recaption prompts directory, or ``None``.
+def _prompts_dir(domain):
+    """Absolute path to ``<user>/default/coras_textgen/prompts/<domain>``.
 
     Returns ``None`` when not running inside ComfyUI (e.g. unit tests that
     don't monkeypatch this function).
@@ -100,7 +158,7 @@ def _prompts_dir():
         base = folder_paths.get_user_directory()
     except Exception:
         return None
-    return os.path.join(base, "default", "coras_textgen", "prompts", "recaption")
+    return os.path.join(base, "default", "coras_textgen", "prompts", domain)
 
 
 def _import_yaml():
@@ -129,18 +187,20 @@ def _load_yaml_file(path):
     return data if isinstance(data, dict) else None
 
 
-def seed_defaults():
-    """Write default YAML files to the prompts dir if absent. Never raises.
-
-    Idempotent: existing files are left untouched so user edits survive
-    restarts. Called from ``CorasTextGenExtension.on_load``.
-    """
-    directory = _prompts_dir()
+def _seed_domain(domain):
+    """Write default YAML files for one domain. Never raises."""
+    directory = _prompts_dir(domain)
     if directory is None:
+        return
+    defaults = _DEFAULTS.get(domain)
+    if not defaults:
         return
     yaml = _import_yaml()
     if yaml is None:
-        _logger.warning("coras_textgen: PyYAML unavailable; skipping prompt seeding.")
+        _logger.warning(
+            "coras_textgen: PyYAML unavailable; skipping seeding for domain=%s.",
+            domain,
+        )
         return
     try:
         os.makedirs(directory, exist_ok=True)
@@ -148,7 +208,7 @@ def seed_defaults():
         _logger.warning("coras_textgen: could not create %s: %s", directory, exc)
         return
 
-    for filename, data in _DEFAULTS.items():
+    for filename, data in defaults.items():
         path = os.path.join(directory, filename)
         if os.path.exists(path):
             continue
@@ -161,13 +221,29 @@ def seed_defaults():
             _logger.warning("coras_textgen: could not seed %s: %s", path, exc)
 
 
-def list_styles():
-    """Return ``[{"filename": ..., "name": ...}, ...]`` sorted by display name.
+def seed_defaults(domain=None):
+    """Seed default YAML files. With no argument, seeds every domain.
+
+    Idempotent: existing files are left untouched so user edits survive
+    restarts. Called from ``CorasTextGenExtension.on_load`` without an
+    argument so a single startup pass seeds Recaption and Prompt Enhancer
+    in one go.
+    """
+    if domain is None:
+        for d in _DEFAULTS:
+            _seed_domain(d)
+        return
+    _seed_domain(domain)
+
+
+def list_styles(domain):
+    """Return ``[{"filename": ..., "name": ...}, ...]`` for the given domain.
 
     Entries with a missing/blank ``name`` or ``system_prompt`` are skipped.
     On a ``name`` collision the file that sorts first by filename wins.
+    Sorted by display name (case-insensitive).
     """
-    directory = _prompts_dir()
+    directory = _prompts_dir(domain)
     if directory is None or not os.path.isdir(directory):
         return []
 
@@ -193,8 +269,9 @@ def list_styles():
         name = name.strip()
         if name in seen_names:
             _logger.warning(
-                "coras_textgen: duplicate prompt-style name %r in %s (keeping %s)",
-                name, filename, seen_names[name],
+                "coras_textgen: duplicate style name %r in domain=%s "
+                "(file %s, keeping %s)",
+                name, domain, filename, seen_names[name],
             )
             continue
         seen_names[name] = filename
@@ -205,12 +282,12 @@ def list_styles():
     )
 
 
-def get_system_prompt(name):
-    """Return the system prompt for the given display name, or ``None``."""
+def get_system_prompt(domain, name):
+    """Return the system prompt for the named style in this domain, or ``None``."""
     if not isinstance(name, str) or not name.strip():
         return None
     target = name.strip()
-    directory = _prompts_dir()
+    directory = _prompts_dir(domain)
     if directory is None or not os.path.isdir(directory):
         return None
 

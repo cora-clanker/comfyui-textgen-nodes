@@ -1,10 +1,11 @@
 """HTTP route registration for the Prompt Enhancer and Recaption dropdowns.
 
 This module performs side effects on import: it registers
-``GET /coras_textgen/models``, ``GET /coras_textgen/models/vision`` and
-``GET /coras_textgen/prompt_styles/recaption`` on ComfyUI's ``PromptServer``.
-The frontend reaches them under ``/api/...`` via ``Combo.Input``'s
-``RemoteOptions``.
+``GET /coras_textgen/models``, ``GET /coras_textgen/models/vision``,
+``GET /coras_textgen/prompt_styles/recaption`` and
+``GET /coras_textgen/prompt_styles/prompt_enhancer`` on ComfyUI's
+``PromptServer``. The frontend reaches them under ``/api/...`` via
+``Combo.Input``'s ``RemoteOptions``.
 
 Importing this module outside ComfyUI (``server`` not on ``sys.path``) is a
 no-op: the import fails, the caller catches it.
@@ -69,9 +70,21 @@ async def coras_textgen_list_vision_models(_request):
 async def coras_textgen_list_recaption_styles(_request):
     """Return the available Recaption prompt-style display names."""
     try:
-        styles = prompts.list_styles()
+        styles = prompts.list_styles("recaption")
     except Exception as exc:  # noqa: BLE001 -- any failure -> empty dropdown
-        _logger.warning("coras_textgen: failed to list prompt styles: %s", exc)
+        _logger.warning("coras_textgen: failed to list recaption styles: %s", exc)
+        return web.json_response([])
+
+    return web.json_response([s["name"] for s in styles])
+
+
+@PromptServer.instance.routes.get("/coras_textgen/prompt_styles/prompt_enhancer")
+async def coras_textgen_list_enhancer_styles(_request):
+    """Return the available Prompt Enhancer style display names."""
+    try:
+        styles = prompts.list_styles("prompt_enhancer")
+    except Exception as exc:  # noqa: BLE001 -- any failure -> empty dropdown
+        _logger.warning("coras_textgen: failed to list enhancer styles: %s", exc)
         return web.json_response([])
 
     return web.json_response([s["name"] for s in styles])

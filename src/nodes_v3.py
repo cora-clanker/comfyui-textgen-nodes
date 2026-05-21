@@ -25,10 +25,13 @@ _DESCRIPTION = (
 )
 
 _PROMPT_ENHANCER_DESCRIPTION = (
-    "Run a prompt through the configured chat endpoint and return the reply "
-    "with <think> reasoning blocks removed. The model dropdown is populated "
-    "from <api_base>/models; use the refresh button to re-fetch. System "
-    "prompt, endpoint and API key come from Settings -> Cora's Textgen."
+    "Rewrite a draft prompt through the configured chat endpoint and return "
+    "the reply with <think> reasoning blocks removed. The model dropdown is "
+    "populated from <api_base>/models. The system prompt comes from the "
+    "selected style (YAML files under "
+    "<user>/default/coras_textgen/prompts/prompt_enhancer/), not Settings "
+    "-> System Prompt -- that setting still drives Textgen Advanced. "
+    "Endpoint and API key come from Settings -> Cora's Textgen."
 )
 
 _RECAPTION_DESCRIPTION = (
@@ -92,7 +95,20 @@ class CorasPromptEnhancerNode(io.ComfyNode):
                     "text",
                     multiline=True,
                     default="",
-                    tooltip="User message sent to the model.",
+                    tooltip="Draft prompt the model should rewrite.",
+                ),
+                io.Combo.Input(
+                    "style",
+                    options=[],
+                    remote=io.RemoteOptions(
+                        route="/coras_textgen/prompt_styles/prompt_enhancer",
+                        refresh_button=False,
+                    ),
+                    tooltip=(
+                        "Prompt style. Edit or add YAML files under "
+                        "<user>/default/coras_textgen/prompts/prompt_enhancer/. "
+                        "Replaces the Settings system prompt for this node."
+                    ),
                 ),
                 io.Combo.Input(
                     "model",
@@ -109,16 +125,21 @@ class CorasPromptEnhancerNode(io.ComfyNode):
 
     @classmethod
     def validate_inputs(cls, **kwargs):
-        # The model Combo is remote-populated (options=[] in the schema), so
-        # ComfyUI's built-in "value in list" check would reject any value at
-        # submit time. Defining this method with **kwargs tells the executor
-        # to skip its static per-input checks and defer to us; any non-empty
-        # model name is accepted and resolved by the endpoint at run time.
+        # The model and style Combos are remote-populated (options=[] in the
+        # schema), so ComfyUI's built-in "value in list" check would reject
+        # any value at submit time. Defining this method with **kwargs tells
+        # the executor to skip its static per-input checks and defer to us;
+        # any non-empty value is accepted and resolved at run time.
         return True
 
     @classmethod
-    async def execute(cls, text, model) -> io.NodeOutput:
-        cfg = resolve_config(model_override=model)
+    async def execute(cls, text, style, model) -> io.NodeOutput:
+        system_prompt = prompts.get_system_prompt("prompt_enhancer", style)
+        if system_prompt is None:
+            raise RuntimeError(
+                f"Prompt Enhancer: prompt style {style!r} not found"
+            )
+        cfg = resolve_config(system_prompt_override=system_prompt, model_override=model)
         raw = await asyncio.to_thread(chat_completion, cfg, text)
         return io.NodeOutput(strip_think(raw))
 
@@ -168,7 +189,7 @@ class CorasRecaptionNode(io.ComfyNode):
 
     @classmethod
     async def execute(cls, image, style, model) -> io.NodeOutput:
-        system_prompt = prompts.get_system_prompt(style)
+        system_prompt = prompts.get_system_prompt("recaption", style)
         if system_prompt is None:
             raise RuntimeError(f"Recaption: prompt style {style!r} not found")
         cfg = resolve_config(system_prompt_override=system_prompt, model_override=model)

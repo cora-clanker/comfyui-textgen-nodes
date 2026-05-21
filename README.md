@@ -59,20 +59,28 @@ same config-resolution chain.
 
 ## The nodes
 
-### Cora's Prompt Enhancer (V3 only)
+### Prompt Enhancer (V3 only)
 
 **Inputs**
 
-- `text` (required, multiline) — the user message.
+- `text` (required, multiline) — the draft prompt to be rewritten.
+- `style` (dropdown) — populated from YAML files in
+  `<user>/default/coras_textgen/prompts/prompt_enhancer/`. Each file has
+  `name` (the display label) and `system_prompt` (the instruction sent
+  to the model). On first launch the extension seeds
+  `stable_diffusion.yml` (tag-style rewriter) and `flux.yml`
+  (natural-language rewriter); existing files are never clobbered, so
+  edits and additions survive restarts. **The selected style fully
+  replaces Settings → System Prompt for this node** — that setting now
+  only affects **Textgen Advanced**.
 - `model` (dropdown) — populated by calling `<api_base>/models` on the
-  configured endpoint, with a refresh button to re-fetch. System prompt
-  comes from Settings.
+  configured endpoint.
 
 **Output**
 
 - `text` — the assistant reply with reasoning removed.
 
-The dropdown is empty if the endpoint is unreachable, returns no
+The model dropdown is empty if the endpoint is unreachable, returns no
 `/models` route, or no API key is configured — in any of those cases
 **Cora's Textgen Advanced** remains usable because its `model` is free-text.
 
