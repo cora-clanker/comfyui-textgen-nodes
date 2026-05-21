@@ -120,9 +120,14 @@ def _pick_bool(*candidates, default):
     return default
 
 
-def resolve_config(*, system_prompt: str, model: str) -> TextGenConfig:
+def resolve_config(*, system_prompt: str = "", model: str = "") -> TextGenConfig:
     """Build a :class:`TextGenConfig` from settings/env plus the caller's
     ``system_prompt`` and ``model``.
+
+    Both kwargs default to ``""`` so route handlers that only need the
+    connection config (api_base/api_key/timeout) can call ``resolve_config()``
+    without supplying chat-only fields. Nodes that actually issue a chat
+    completion always pass real values for both.
 
     Raises ``ValueError`` if no API key can be found, since there is no safe
     default for it.

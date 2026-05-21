@@ -90,10 +90,12 @@ The model dropdowns talk to `/coras_textgen/models` (and
   tag-style and natural-language captioners respectively; existing files
   are never clobbered, so edits and additions survive restarts.
 - `model` (dropdown) — populated from `<api_base>/models`, then filtered
-  by a name heuristic (`vision`, `vl`, `llava`, `gpt-4o`, `gemma-3`,
-  `qwen-vl`, `internvl`, `minicpm-v`, `pixtral`, `molmo`, `claude`,
-  `kimi-vl`). Toggle **Filter Vision-Capable Models** off in Settings to
-  show every model the endpoint advertises.
+  by a name heuristic (`vision`, `vl`, `llava`, `gpt-4o`, `gemma`,
+  `pixtral`, `molmo`, `claude`, `minicpm`, `florence`, `moondream`,
+  `multimodal`). If the heuristic filters out every model the endpoint
+  advertised, the unfiltered list is shown instead so the dropdown is
+  never empty; toggle **Filter Vision-Capable Models** off in Settings
+  to skip the heuristic entirely.
 
 **Output**
 

@@ -52,6 +52,18 @@ def test_system_prompt_and_model_pass_through(monkeypatch):
     assert cfg.model == "my-model"
 
 
+def test_no_arg_call_works_for_route_handlers(monkeypatch):
+    # Route handlers (e.g. /coras_textgen/models, .../models/vision) hit
+    # resolve_config() with no chat-only fields. The signature MUST tolerate
+    # that -- if it doesn't, the frontend Combo sits on "Loading..." forever
+    # because the handler 500s.
+    monkeypatch.setenv("CORAS_TEXTGEN_API_KEY", "k")
+    cfg = resolve_config()
+    assert cfg.api_key == "k"
+    assert cfg.system_prompt == ""
+    assert cfg.model == ""
+
+
 def test_settings_override_env_for_api_key(monkeypatch):
     monkeypatch.setenv("CORAS_TEXTGEN_API_KEY", "env-key")
     set_settings(monkeypatch, {"coras_textgen.apiKey": "settings-key"})

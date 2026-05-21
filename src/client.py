@@ -16,20 +16,22 @@ from .config import TextGenConfig
 # Substring keywords (case-insensitive) used to detect vision-capable models
 # advertised by an OpenAI-compatible /models endpoint. The list errs on the
 # side of catching known families; users can disable filtering entirely via
-# the recaptionFilterVision setting if their endpoint exposes a name we miss.
+# the recaptionFilterVision setting. "gemma" is intentionally broad (catches
+# gemma-3, gemma-4, gemma-3n, community fine-tunes) -- gemma-2 and earlier
+# slipping in is an acceptable cost for never missing a real vision build.
 _VISION_KEYWORDS = (
     "vision",
     "vl",
     "llava",
     "gpt-4o",
-    "gemma-3",
-    "qwen-vl",
-    "internvl",
-    "minicpm-v",
+    "gemma",
     "pixtral",
     "molmo",
     "claude",
-    "kimi-vl",
+    "minicpm",
+    "florence",
+    "moondream",
+    "multimodal",
 )
 
 
@@ -186,14 +188,21 @@ def list_models(cfg: TextGenConfig) -> list[str]:
 def list_vision_models(cfg: TextGenConfig, *, filter_vision: bool = True) -> list[str]:
     """Wrap :func:`list_models` with an optional vision-keyword filter.
 
-    With ``filter_vision=False`` the result is identical to ``list_models``
-    so users can opt out when the endpoint advertises vision models under
-    names the heuristic doesn't catch.
+    With ``filter_vision=False`` the result is identical to ``list_models``.
+    With ``filter_vision=True`` we filter by the keyword heuristic; **if that
+    leaves the list empty but the endpoint did return models, we fall back
+    to the unfiltered list** so the frontend dropdown never sits stuck on
+    "Loading..." (the Combo widget treats an empty array as "still loading"
+    indefinitely). The user can still pick a non-vision model and will get
+    a clear server error at run time if it really lacks vision support.
     """
     models = list_models(cfg)
     if not filter_vision:
         return models
-    return [m for m in models if _is_vision_model(m)]
+    filtered = [m for m in models if _is_vision_model(m)]
+    if not filtered and models:
+        return models
+    return filtered
 
 
 def tensor_to_png_b64(image) -> str:

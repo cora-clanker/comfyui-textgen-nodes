@@ -24,13 +24,20 @@ def test_heuristic_matches_each_keyword():
         "gpt-4o",
         "gpt-4o-mini",
         "gemma-3-27b",
+        "gemma-4-26B-A4B-it-heretic",
+        "gemma3n-e4b",
         "internvl-chat-v1-5",
         "MiniCPM-V-2_6",
+        "minicpm-llama3-v-2_5",
         "pixtral-12b",
         "molmo-7b-d",
         "claude-3-5-sonnet",
         "kimi-vl-thinking",
         "some-vision-model",
+        "florence-2-large",
+        "moondream2",
+        "phi-3.5-vision-instruct",
+        "phi-4-multimodal-instruct",
     ]
     for k in keywords:
         assert _is_vision_model(k), k
@@ -61,3 +68,12 @@ def test_list_vision_models_passthrough_when_disabled():
 def test_list_vision_models_empty_input():
     with patch("src.client.list_models", return_value=[]):
         assert list_vision_models(_cfg()) == []
+
+
+def test_list_vision_models_falls_back_when_filter_empty():
+    # When the endpoint returns models but none match the heuristic, we MUST
+    # return the unfiltered list -- otherwise the frontend Combo treats the
+    # empty array as "still loading" and the dropdown sits stuck forever.
+    pool = ["llama-3-70b", "mistral-7b", "exotic-model-no-keywords"]
+    with patch("src.client.list_models", return_value=pool):
+        assert list_vision_models(_cfg()) == pool
