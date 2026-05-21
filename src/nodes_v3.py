@@ -30,6 +30,15 @@ _RECAPTION_DESCRIPTION = (
     "in Settings -> Cora's Textgen -> Recaption to show every model."
 )
 
+_REFINE_TEXT_DESCRIPTION = (
+    "Sit between an upstream text node and downstream consumers to capture "
+    "the upstream text into an editable multiline field. With lock off the "
+    "node passes the upstream input through and repopulates the widget after "
+    "each run. The lock flips on automatically the moment you type in the "
+    "widget; while locked, the widget value is output and the upstream input "
+    "is ignored. Untick lock to resync from upstream."
+)
+
 
 class CorasPromptEnhancerNode(io.ComfyNode):
     @classmethod
@@ -147,12 +156,58 @@ class CorasRecaptionNode(io.ComfyNode):
         return io.NodeOutput(strip_think(raw))
 
 
+class CorasRefineTextNode(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="CorasRefineText",
+            display_name="Refine Text",
+            category="text",
+            description=_REFINE_TEXT_DESCRIPTION,
+            inputs=[
+                io.String.Input(
+                    "text",
+                    multiline=True,
+                    default="",
+                    force_input=True,
+                    optional=True,
+                    tooltip="Upstream text. Socket-only; wire from Prompt Enhancer or any string source.",
+                ),
+                io.Boolean.Input(
+                    "lock",
+                    default=False,
+                    tooltip=(
+                        "When on, output the edited text below instead of the "
+                        "upstream input. Auto-engages when you type in the widget."
+                    ),
+                ),
+                io.String.Input(
+                    "edited_text",
+                    multiline=True,
+                    default="",
+                    tooltip=(
+                        "Editable copy of the upstream text. Auto-populated "
+                        "after each run while unlocked; freely edited while locked."
+                    ),
+                ),
+            ],
+            outputs=[io.String.Output(display_name="text")],
+        )
+
+    @classmethod
+    async def execute(cls, lock: bool, edited_text: str, text: str = "") -> io.NodeOutput:
+        # Always emit the upstream text to the frontend so the JS extension
+        # can detect "upstream drifted while locked" and surface a warning.
+        out = edited_text if lock else text
+        return io.NodeOutput(out, ui={"upstream_text": (text,)})
+
+
 class CorasTextGenExtension(ComfyExtension):
     async def on_load(self):
         prompts.seed_defaults()
 
     async def get_node_list(self):
-        return [CorasPromptEnhancerNode, CorasRecaptionNode]
+        return [CorasPromptEnhancerNode, CorasRecaptionNode, CorasRefineTextNode]
 
 
 async def comfy_entrypoint() -> ComfyExtension:

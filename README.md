@@ -1,10 +1,11 @@
 # comfyui-coras-textgen-nodes
 
-**Cora's Textgen** — a ComfyUI custom-node pack with two nodes,
-**Prompt Enhancer** and **Recaption**, that send your text (or an image)
-plus a style-driven system prompt to an OpenAI-compatible
-`/chat/completions` endpoint and output the reply with `<think>`
-reasoning blocks stripped.
+**Cora's Textgen** — a ComfyUI custom-node pack with three nodes:
+**Prompt Enhancer** and **Recaption** send your text (or an image) plus
+a style-driven system prompt to an OpenAI-compatible `/chat/completions`
+endpoint and output the reply with `<think>` reasoning blocks stripped;
+**Refine Text** lets you manually edit a captured prompt before re-running
+downstream nodes.
 
 - Targets the **Nodes 2.0 (V3)** API.
 - Endpoint and API key are set in the ComfyUI **Settings panel** (group:
@@ -106,6 +107,46 @@ vision message (`image_url` content part). Works against any endpoint that
 implements the vision content array — OpenAI, LM Studio (with a VL model),
 LocalAI, vLLM, etc.
 
+### Refine Text
+
+A passthrough-with-override node for the workflow where you want to rerun
+downstream nodes with a manually tweaked version of an LLM-generated prompt
+without rerunning the LLM.
+
+**Inputs**
+
+- `text` (socket, optional) — upstream string. Typically Prompt Enhancer's
+  output, but anything string-typed works.
+- `lock` (checkbox) — when off, the node passes the upstream input through
+  and writes it into the editable widget below after each run; when on, the
+  edited widget value is output and the upstream input is ignored.
+- `edited_text` (multiline textarea) — the editable capture of the upstream
+  text. Typing into it flips `lock` to on automatically, so editing and
+  rerunning takes a single keystroke past the edit itself.
+
+**Output**
+
+- `text` — `edited_text` while locked, otherwise the upstream input.
+
+**Typical workflow**
+
+1. Wire `Prompt Enhancer → Refine Text → <downstream>`. `lock` starts off.
+2. Run — the enhanced prompt appears in `edited_text` and flows downstream.
+3. Edit `edited_text`. `lock` flips on. Run again — downstream sees your edit;
+   the Prompt Enhancer call doesn't re-fire (ComfyUI caches it since its
+   inputs are unchanged).
+4. Untick `lock` to resync from the upstream LLM output.
+
+The lock state and edited text are saved into the workflow JSON, so reloading
+a workflow restores both.
+
+**Stale-lock warning.** While `lock` is on, the node remembers the last
+upstream text it captured. If a subsequent run produces a different upstream
+value (e.g. you tweaked Prompt Enhancer's style or model and reran without
+unticking lock), the node title bar turns orange and a warning is logged to
+the browser console. Untick lock to resync from upstream and clear the
+warning. The warning color is not persisted into saved workflows.
+
 ### `<think>` stripping
 
 The output has reasoning content removed, handling the common variants:
@@ -139,6 +180,17 @@ pytest -q
 Tests cover `strip_think` (all tag variants), `resolve_config` precedence,
 the vision-model name heuristic, and the YAML-backed prompt-style loader;
 none require a running ComfyUI.
+
+The Refine Text node's lock state machine has its own JS unit tests using
+Node's built-in test runner (no extra deps):
+
+```bash
+node --test tests/test_refine_text_state.mjs
+```
+
+The reducers in `web/js/refine_text_state.js` are pure (no browser or
+ComfyUI references) so the spec is testable in isolation; the DOM glue in
+`web/js/coras_refine_text.js` is a thin wrapper around them.
 
 ## Publishing
 
